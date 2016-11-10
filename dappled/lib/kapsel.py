@@ -2,6 +2,7 @@ from __future__ import absolute_import, print_function
 import os
 import subprocess
 import sys
+from lib.utils import unbuffered
 
 def patch():
     from conda_kapsel.project_file import ProjectFile
@@ -81,7 +82,9 @@ class KapselEnv:
                 cwd=self.dirname, env=self.env)
         except OSError as e:
             raise Exception("failed to run: %r: %r" % (" ".join(cmd_list), repr(e)))
-        (out, err) = p.communicate()
+        for line in unbuffered(p):
+            print(line)
+        # (out, err) = p.communicate()
         errstr = err.decode().strip()
         if p.returncode != 0:
             raise Exception('%s: %s' % (" ".join(cmd_list), errstr))

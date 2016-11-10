@@ -4,6 +4,7 @@ from __future__ import absolute_import, print_function, division, unicode_litera
 import argparse
 import json
 from getpass import getpass
+from glob import glob
 import os
 import subprocess
 import uuid
@@ -95,7 +96,9 @@ def handle_edit_action(args):
     run_kapsel_command('run', filename)
 
 def handle_run_action(args):
-    run_kapsel_command('run', 'dappled-run')
+    # run_kapsel_command('run', 'dappled-run')
+    kapsel_env = KapselEnv()
+    kapsel_env.run('dappled-run')
 
 def handle_publish_action(args):
 
@@ -113,7 +116,6 @@ def handle_publish_action(args):
     multiple_files = [
         ('options', ('options.json', json.dumps(options), 'application/json')),
         ('dappled.yml', ('dappled.yml', open('dappled.yml', 'rb').read(), 'text/x-yaml')),
-        # ('kapsel.yml', ('kapsel.yml', open('kapsel.yml', 'rb').read(), 'text/x-yaml')),
         ('notebook.ipynb', (notebook_filename, open(notebook_filename, 'rb').read(), 'application/json')),
         ('environment.yml', ('environment.yml', call_conda_env_export(), 'text/x-yaml')),
     ]
@@ -134,8 +136,6 @@ def download_notebook_data(id):
 def write_notebook_data(data, path=''):
     with open(os.path.join(path, 'dappled.yml'), 'w') as f:
         print(data['dappled_yml'], file=f)
-    # with open(os.path.join(path, 'kapsel.yml'), 'w') as f:
-    #     print(data['kapsel_yml'], file=f)
 
     yml = ruamel.yaml.load(data['dappled_yml'], ruamel.yaml.RoundTripLoader) 
     filename = os.path.basename(yml['filename'])
@@ -155,8 +155,6 @@ def handle_prepare_action(args):
         write_notebook_data(data, path)
         os.chdir(path)
 
-    # os.system('conda kapsel prepare')
-    # run_kapsel_command('prepare')
     kapsel_env = KapselEnv()
     dappled_core_path = os.path.dirname(kapsel_env.run('python', '-c', 'import dappled_core; print(dappled_core.__file__)'))
     nbextension_path = os.path.join(dappled_core_path, 'static', 'nbextension')
