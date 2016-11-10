@@ -19,7 +19,7 @@ except:
     ruamel = imp.new_module('ruamel')
     ruamel.yaml = sys.modules['ruamel.yaml'] = ruamel_yaml
 
-from lib.kapsel import run_kapsel_command
+from lib.kapsel import run_kapsel_command, KapselEnv
 import lib.kapsel
 lib.kapsel.patch()
 
@@ -156,8 +156,14 @@ def handle_prepare_action(args):
         os.chdir(path)
 
     # os.system('conda kapsel prepare')
-    run_kapsel_command('prepare')
+    # run_kapsel_command('prepare')
+    kapsel_env = KapselEnv()
+    dappled_core_path = os.path.dirname(kapsel_env.run('python', '-c', 'import dappled_core; print(dappled_core.__file__)'))
+    nbextension_path = os.path.join(dappled_core_path, 'static', 'nbextension')
+    kapsel_env.run('jupyter', 'nbextension', 'install', nbextension_path, '--sys-prefix', '--symlink')
+    kapsel_env.run('jupyter', 'nbextension', 'enable', 'nbextension/nbextension', '--sys-prefix')
 
+    kapsel_env.run('jupyter', 'dashboards', 'quick-setup', '--sys-prefix', '--InstallNBExtensionApp.log_level=CRITICAL')
 
 def handle_clone_action(args):
     if os.path.exists('dappled.yml'):

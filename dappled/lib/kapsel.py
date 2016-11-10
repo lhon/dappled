@@ -1,4 +1,7 @@
+from __future__ import absolute_import, print_function
 import os
+import subprocess
+import sys
 
 def patch():
     from conda_kapsel.project_file import ProjectFile
@@ -54,3 +57,35 @@ def run_kapsel_command(*args):
     from conda_kapsel.commands.main import _parse_args_and_run_subcommand
     argv = [''] + list(args)
     _parse_args_and_run_subcommand(argv)
+
+class KapselEnv:
+    def __init__(self, dirname='.'):
+        from conda_kapsel.commands.prepare_with_mode import UI_MODE_TEXT_DEVELOPMENT_DEFAULTS_OR_ASK    
+        from conda_kapsel.commands.prepare_with_mode import prepare_with_ui_mode_printing_errors
+        from conda_kapsel.commands.project_load import load_project
+
+        project = load_project(dirname)
+        ui_mode = UI_MODE_TEXT_DEVELOPMENT_DEFAULTS_OR_ASK
+        conda_environment = 'default'
+        result = prepare_with_ui_mode_printing_errors(project, ui_mode=ui_mode, env_spec_name=conda_environment)
+        if result.failed:
+            print("failed")
+            return None
+
+        self.env = result.environ
+        self.dirname = dirname
+
+    def run(self, *cmd_list, **kwargs):
+        try:
+            p = subprocess.Popen(cmd_list, stdout=subprocess.PIPE, stderr=subprocess.PIPE, 
+                cwd=self.dirname, env=self.env)
+        except OSError as e:
+            raise Exception("failed to run: %r: %r" % (" ".join(cmd_list), repr(e)))
+        (out, err) = p.communicate()
+        errstr = err.decode().strip()
+        if p.returncode != 0:
+            raise Exception('%s: %s' % (" ".join(cmd_list), errstr))
+        elif errstr != '' and kwargs.get('print_stderr'):
+            for line in errstr.split("\n"):
+                print("%s %s: %s" % (cmd_list[0], cmd_list[1], line), file=sys.stderr)
+        return out
