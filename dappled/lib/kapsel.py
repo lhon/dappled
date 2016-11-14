@@ -68,6 +68,7 @@ class KapselEnv:
         project = load_project(dirname)
         ui_mode = UI_MODE_TEXT_DEVELOPMENT_DEFAULTS_OR_ASK
         conda_environment = 'default'
+        print('Preparing environment')
         result = prepare_with_ui_mode_printing_errors(project, ui_mode=ui_mode, env_spec_name=conda_environment)
         if result.failed:
             print("failed")
@@ -75,6 +76,18 @@ class KapselEnv:
 
         self.env = result.environ
         self.dirname = dirname
+
+        self._prepare()
+
+    def _prepare(self):
+        print('installing jupyter extensions')
+        dappled_core_path = os.path.dirname(
+            self.run('python', '-c', 'import dappled_core; print(dappled_core.__file__)'))
+        nbextension_path = os.path.join(dappled_core_path, 'static', 'nbextension')
+        self.run('jupyter', 'nbextension', 'install', nbextension_path, '--sys-prefix', '--symlink')
+        self.run('jupyter', 'nbextension', 'enable', 'nbextension/nbextension', '--sys-prefix')
+
+        self.run('jupyter', 'dashboards', 'quick-setup', '--sys-prefix', '--InstallNBExtensionApp.log_level=CRITICAL')
 
     def run(self, *cmd_list, **kwargs):
         try:
@@ -85,7 +98,7 @@ class KapselEnv:
 
         out = []
         for line in unbuffered(p):
-            print(line)
+            if kwargs.get('print_stdout'): print(line)
             out.append(line)
         err = p.stderr.read()
         # (out, err) = p.communicate()
