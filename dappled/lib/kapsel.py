@@ -79,11 +79,15 @@ class KapselEnv:
     def run(self, *cmd_list, **kwargs):
         try:
             p = subprocess.Popen(cmd_list, stdout=subprocess.PIPE, stderr=subprocess.PIPE, 
-                cwd=self.dirname, env=self.env)
+                cwd=self.dirname, env=self.env, bufsize=1)
         except OSError as e:
             raise Exception("failed to run: %r: %r" % (" ".join(cmd_list), repr(e)))
+
+        out = []
         for line in unbuffered(p):
             print(line)
+            out.append(line)
+        err = p.stderr.read()
         # (out, err) = p.communicate()
         errstr = err.decode().strip()
         if p.returncode != 0:
@@ -91,4 +95,5 @@ class KapselEnv:
         elif errstr != '' and kwargs.get('print_stderr'):
             for line in errstr.split("\n"):
                 print("%s %s: %s" % (cmd_list[0], cmd_list[1], line), file=sys.stderr)
-        return out
+
+        return ''.join(out)

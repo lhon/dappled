@@ -95,10 +95,17 @@ def handle_edit_action(args):
 
     run_kapsel_command('run', filename)
 
-def handle_run_action(args):
+def handle_run_action(args, unknown_args):
+    if args.id is not None:
+        paths = glob(os.path.join(DAPPLED_PATH, 'nb', args.id+'*'))
+        paths.sort(key=lambda x: x.split('.v')[1], reverse=True)
+        path = paths[0]
+        print(path)
+        os.chdir(path)
     # run_kapsel_command('run', 'dappled-run')
     kapsel_env = KapselEnv()
-    kapsel_env.run('dappled-run')
+    cmd_list = ['dappled-run'] + unknown_args
+    kapsel_env.run(*cmd_list)
 
 def handle_publish_action(args):
 
@@ -182,6 +189,8 @@ def main():
     edit_parser = subparsers.add_parser("edit")
     run_parser = subparsers.add_parser("run")
     run_parser.add_argument("id", nargs='?')
+    # run_parser.add_argument('--port', type=int, default=8008)
+    # run_parser.add_argument('--server', action="store_true")
     publish_parser = subparsers.add_parser("publish")
     prepare_parser = subparsers.add_parser("prepare")
     prepare_parser.add_argument("id", nargs='?')
@@ -190,7 +199,9 @@ def main():
 
     # a_parser.add_argument("something", choices=['a1', 'a2'])
 
-    args = parser.parse_args()
+    args, unknown_args = parser.parse_known_args()
+    if args.dappled_action != 'run':
+        args = parser.parse_args()
 
     # print(args)
 
@@ -199,7 +210,7 @@ def main():
     elif args.dappled_action == 'edit':
         handle_edit_action(args)
     elif args.dappled_action == 'run':
-        handle_run_action(args)
+        handle_run_action(args, unknown_args)
     elif args.dappled_action == 'publish':
         handle_publish_action(args)
     elif args.dappled_action == 'prepare':
