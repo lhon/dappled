@@ -94,7 +94,12 @@ def handle_edit_action(args):
         sys.exit()
 
     kapsel_env = KapselEnv()
-    run_kapsel_command('run', filename)
+    if args.password:
+        hashed_password = kapsel_env.run('python', '-c', 
+            'import getpass,IPython.lib;print(IPython.lib.passwd(getpass.getpass("Enter a password for editing notebook: ")))')
+        run_kapsel_command('run', filename, '--NotebookApp.password=%s' % hashed_password)
+    else:
+        run_kapsel_command('run', filename)
 
 def handle_run_action(args, unknown_args):
     if args.id is not None:
@@ -182,6 +187,7 @@ def main():
 
     init_parser = subparsers.add_parser("init")
     edit_parser = subparsers.add_parser("edit")
+    edit_parser.add_argument('--password', action="store_true")
     run_parser = subparsers.add_parser("run")
     run_parser.add_argument("id", nargs='?')
     # run_parser.add_argument('--port', type=int, default=8008)
