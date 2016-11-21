@@ -61,7 +61,7 @@ def run_kapsel_command(*args):
 
 class KapselEnv:
     def __init__(self, dirname='.'):
-        from conda_kapsel.commands.prepare_with_mode import UI_MODE_TEXT_DEVELOPMENT_DEFAULTS_OR_ASK    
+        from conda_kapsel.commands.prepare_with_mode import UI_MODE_TEXT_DEVELOPMENT_DEFAULTS_OR_ASK
         from conda_kapsel.commands.prepare_with_mode import prepare_with_ui_mode_printing_errors
         from conda_kapsel.commands.project_load import load_project
 
@@ -91,7 +91,7 @@ class KapselEnv:
 
     def run(self, *cmd_list, **kwargs):
         try:
-            p = subprocess.Popen(cmd_list, stdout=subprocess.PIPE, stderr=subprocess.PIPE, 
+            p = subprocess.Popen(cmd_list, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, 
                 cwd=self.dirname, env=self.env, bufsize=1)
         except OSError as e:
             raise Exception("failed to run: %r: %r" % (" ".join(cmd_list), repr(e)))
@@ -100,13 +100,13 @@ class KapselEnv:
         for line in unbuffered(p):
             if kwargs.get('print_stdout'): print(line)
             out.append(line)
-        err = p.stderr.read()
-        # (out, err) = p.communicate()
-        errstr = err.decode().strip()
-        if p.returncode != 0:
-            raise Exception('%s: %s' % (" ".join(cmd_list), errstr))
-        elif errstr != '' and kwargs.get('print_stderr'):
-            for line in errstr.split("\n"):
-                print("%s %s: %s" % (cmd_list[0], cmd_list[1], line), file=sys.stderr)
+        # err = p.stderr.read()
+        # # (out, err) = p.communicate()
+        # errstr = err.decode().strip()
+        # if p.returncode != 0:
+        #     raise Exception('%s: %s' % (" ".join(cmd_list), errstr))
+        # elif errstr != '' and kwargs.get('print_stderr'):
+        #     for line in errstr.split("\n"):
+        #         print("%s %s: %s" % (cmd_list[0], cmd_list[1], line), file=sys.stderr)
 
         return ''.join(out)

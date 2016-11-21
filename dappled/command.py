@@ -63,13 +63,21 @@ name:
 filename:
 
 description:
+
+downloads:
+
+packages:
+- dappled-core
+
+channels:
+- conda.dappled.io
 '''
 
 def handle_init_action(args):
     if os.path.exists('dappled.yml'):
         yml = ruamel.yaml.load(open('dappled.yml').read(), ruamel.yaml.RoundTripLoader) 
     else:
-        yml = ruamel.yaml.load(dappled_yml_template)
+        yml = ruamel.yaml.load(dappled_yml_template, ruamel.yaml.RoundTripLoader)
 
     if 'notebook_id' not in yml:
         yml['notebook_id'] = str(uuid.uuid4())
@@ -111,7 +119,7 @@ def handle_run_action(args, unknown_args):
     # run_kapsel_command('run', 'dappled-run')
     kapsel_env = KapselEnv()
     cmd_list = ['dappled-run'] + unknown_args
-    kapsel_env.run(*cmd_list)
+    kapsel_env.run(*cmd_list, print_stdout=True)
 
 def handle_publish_action(args):
 
