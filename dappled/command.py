@@ -20,9 +20,9 @@ except:
     ruamel = imp.new_module('ruamel')
     ruamel.yaml = sys.modules['ruamel.yaml'] = ruamel_yaml
 
-from lib.kapsel import run_kapsel_command, KapselEnv
-import lib.kapsel
-lib.kapsel.patch()
+from dappled.lib.kapsel import run_kapsel_command, KapselEnv
+import dappled.lib.kapsel
+dappled.lib.kapsel.patch()
 
 requests = Session()
 if 'DAPPLED_HOST' in os.environ:

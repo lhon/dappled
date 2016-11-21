@@ -1,6 +1,6 @@
 def main():
-    from dappled.dappled import run_cmd
-    run_cmd()
+    import dappled.command
+    dappled.command.main()
 
 if __name__ == "__main__":
     main()

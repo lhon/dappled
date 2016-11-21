@@ -2,7 +2,7 @@ from __future__ import absolute_import, print_function
 import os
 import subprocess
 import sys
-from lib.utils import unbuffered
+from dappled.lib.utils import unbuffered
 
 def patch():
     from conda_kapsel.project_file import ProjectFile
