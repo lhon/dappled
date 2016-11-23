@@ -80,7 +80,7 @@ class KapselEnv:
         self._prepare()
 
     def _prepare(self):
-        print('installing jupyter extensions')
+        print('Setting up jupyter extensions')
         dappled_core_path = os.path.dirname(
             self.run('python', '-c', 'import dappled_core; print(dappled_core.__file__)'))
         nbextension_path = os.path.join(dappled_core_path, 'static', 'nbextension')

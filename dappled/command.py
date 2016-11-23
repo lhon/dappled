@@ -58,19 +58,41 @@ def call_conda_env_export():
     return out
 
 dappled_yml_template = '''
-name:
+notebook_id:
 
-filename:
+name: Untitled
+
+filename: notebook.ipynb
 
 description:
-
-downloads:
 
 packages:
 - dappled-core
 
 channels:
-- conda.dappled.io
+- http://conda.dappled.io
+
+#downloads:
+'''
+
+notebook_ipynb_template = '''
+{
+ "cells": [
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {
+    "collapsed": true
+   },
+   "outputs": [],
+   "source": []
+  }
+ ],
+ "metadata": {
+ },
+ "nbformat": 4,
+ "nbformat_minor": 1
+}
 '''
 
 def handle_init_action(args):
@@ -79,8 +101,37 @@ def handle_init_action(args):
     else:
         yml = ruamel.yaml.load(dappled_yml_template, ruamel.yaml.RoundTripLoader)
 
-    if 'notebook_id' not in yml:
+        notebook_template = json.loads(notebook_ipynb_template)
+        if args.language == 'python2':
+            notebook_template['metadata']['kernelspec'] = dict(
+                display_name="Python 2",
+                language="python",
+                name="python2",
+                )
+        elif args.language in ('r', 'R'):
+            yml['packages'].insert(0, 'r-base=3.3.1=1') # https://github.com/jupyter/docker-stacks/issues/210
+            yml['packages'].insert(0, 'r-irkernel')
+            yml['channels'].insert(0, 'r')
+
+            notebook_ipynb_template_fn = 'templates/R/notebook.ipynb'
+            notebook_template['metadata']['kernelspec'] = dict(
+                display_name="R",
+                language="R",
+                name="ir",
+                )
+        else:
+            assert False
+
+
+    if 'notebook_id' not in yml or not yml['notebook_id']:
         yml['notebook_id'] = str(uuid.uuid4())
+
+    if not yml.get('filename'):
+        yml['filename'] = 'notebook.ipynb'
+    filename = yml['filename']
+    if not os.path.exists(filename):
+        with open(filename, 'w') as f:
+            print(json.dumps(notebook_template), file=f)
 
     with open('dappled.yml', 'w') as f:
         print(ruamel.yaml.dump(yml, Dumper=ruamel.yaml.RoundTripDumper), file=f)
@@ -97,17 +148,30 @@ def handle_edit_action(args):
         sys.exit()
 
     filename = yml['filename']
+    if filename is None:
+        print("Please specify a filename in dappled.yml")
+        sys.exit()
     if not os.path.exists(filename):
         print('"%s" not found; please fix "filename" in dappled.yml')
         sys.exit()
 
+    # if connecting over SSH, then require server mode
+    if 'SSH_CONNECTION' in os.environ or 'SSH_CLIENT' in os.environ:
+        args.server = True
+
     kapsel_env = KapselEnv()
-    if args.password:
+    options = []
+    if args.password or args.server:
         hashed_password = kapsel_env.run('python', '-c', 
-            'import getpass,IPython.lib;print(IPython.lib.passwd(getpass.getpass("Enter a password for editing notebook: ")))')
-        run_kapsel_command('run', filename, '--NotebookApp.password=%s' % hashed_password)
-    else:
-        run_kapsel_command('run', filename)
+            'import getpass,IPython.lib;print(IPython.lib.passwd(getpass.getpass("Create a password for editing notebook: ")))')
+        options.append('--NotebookApp.password=%s' % hashed_password)
+    if args.server:
+        options.append('--ip=0.0.0.0')
+
+        import socket
+        host = socket.gethostbyname_ex(socket.gethostname())
+        print(host)
+    run_kapsel_command('run', filename, *options)
 
 def handle_run_action(args, unknown_args):
     if args.id is not None:
@@ -194,8 +258,10 @@ def main():
     # parser.add_argument("-v", ...)
 
     init_parser = subparsers.add_parser("init")
+    init_parser.add_argument('--language', type=str, default='python2')
     edit_parser = subparsers.add_parser("edit")
     edit_parser.add_argument('--password', action="store_true")
+    edit_parser.add_argument('--server', action="store_true")
     run_parser = subparsers.add_parser("run")
     run_parser.add_argument("id", nargs='?')
     # run_parser.add_argument('--port', type=int, default=8008)
