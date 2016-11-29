@@ -24,6 +24,8 @@ from dappled.lib.kapsel import run_kapsel_command, KapselEnv
 import dappled.lib.kapsel
 dappled.lib.kapsel.patch()
 
+from dappled.lib.utils import get_free_port, get_ip_addresses
+
 requests = Session()
 if 'DAPPLED_HOST' in os.environ:
     HOST = os.environ['DAPPLED_HOST']
@@ -156,23 +158,42 @@ def handle_edit_action(args):
         sys.exit()
 
     # if connecting over SSH, then require server mode
-    if 'SSH_CONNECTION' in os.environ or 'SSH_CLIENT' in os.environ:
-        args.server = True
+    if ('SSH_CONNECTION' in os.environ or 'SSH_CLIENT' in os.environ) and not args.local:
+        print('SSH connection detected; using --remote (--local to override)')
+        args.remote = True
+    if args.local:
+        args.remote = False
 
     kapsel_env = KapselEnv()
     options = []
-    if args.password or args.server:
+    # options.append('--log-level=ERROR')
+
+    # locate free port
+    port = get_free_port(args.port, 50)
+    if port is not None:
+        options.append('--port=%d' % port)
+    else:
+        print('Failed to get free port')
+        sys.exit()
+
+    # handle --remote and identify URLs/ip addresses
+    if args.remote:
         hashed_password = kapsel_env.run('python', '-c', 
             'import getpass,IPython.lib;print(IPython.lib.passwd(getpass.getpass("Create a password for editing notebook: ")))')
         options.append('--NotebookApp.password=%s' % hashed_password)
-    if args.server:
-        options.append('--ip=0.0.0.0')
-        # options.append('--no-browser')
-        options.append('--browser=echo')
 
-        import socket
-        host = socket.gethostbyname_ex(socket.gethostname())
-        print(host)
+        ip_addresses = get_ip_addresses()
+        options.append('--ip=0.0.0.0')
+        # options.append('--no-browser') # didn't seem to work
+        options.append('--browser=echo')
+        print('Notebook URLs:')
+    else:
+        ip_addresses = ['localhost']
+        print('Opening this URL:')
+
+    for ip in ip_addresses:
+        print('  http://%s:%d/notebooks/%s' % (ip, port, filename))
+
     run_kapsel_command('run', filename, *options)
 
 def handle_run_action(args, unknown_args):
@@ -329,8 +350,9 @@ def main():
     init_parser.add_argument('--language', type=str, default='python2')
     edit_parser = subparsers.add_parser("edit")
     edit_parser.add_argument('--no-docker', action="store_true")
-    edit_parser.add_argument('--password', action="store_true")
-    edit_parser.add_argument('--server', action="store_true")
+    edit_parser.add_argument('--remote', action="store_true")
+    edit_parser.add_argument('--local', action="store_true")
+    edit_parser.add_argument('--port', type=int, default=8888)
     run_parser = subparsers.add_parser("run")
     run_parser.add_argument("id", nargs='?')
     run_parser.add_argument('--no-docker', action="store_true")
