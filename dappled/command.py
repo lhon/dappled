@@ -251,6 +251,9 @@ def handle_clone_action(args):
 
     write_notebook_data(data)
 
+def handle_clean_action(args):
+    run_kapsel_command('clean')
+
 
 def main():
     parser = argparse.ArgumentParser()
@@ -271,6 +274,7 @@ def main():
     prepare_parser.add_argument("id", nargs='?')
     clone_parser = subparsers.add_parser("clone")
     clone_parser.add_argument("id")
+    clean_parser = subparsers.add_parser("clean")
 
     # a_parser.add_argument("something", choices=['a1', 'a2'])
 
@@ -292,7 +296,8 @@ def main():
         handle_prepare_action(args)
     elif args.dappled_action == 'clone':
         handle_clone_action(args)
-
+    elif args.dappled_action == 'clean':
+        handle_clean_action(args)
 
 if __name__ == '__main__':
     main()
