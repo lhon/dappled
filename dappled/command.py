@@ -167,6 +167,8 @@ def handle_edit_action(args):
         options.append('--NotebookApp.password=%s' % hashed_password)
     if args.server:
         options.append('--ip=0.0.0.0')
+        # options.append('--no-browser')
+        options.append('--browser=echo')
 
         import socket
         host = socket.gethostbyname_ex(socket.gethostname())
