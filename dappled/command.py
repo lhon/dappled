@@ -256,6 +256,69 @@ def handle_clone_action(args):
 def handle_clean_action(args):
     run_kapsel_command('clean')
 
+def handle_if_docker_request(args):
+    if 'DOCKER_IMAGE' in os.environ:
+        return # already in container
+
+    if args.no_docker:
+        return
+
+    if os.path.exists('dappled.yml'):
+        yml = ruamel.yaml.load(open('dappled.yml').read(), ruamel.yaml.RoundTripLoader) 
+    else:
+        print('dappled.yml not found; please run "dappled init" first')
+        sys.exit()
+
+    if not yml.get('docker_image'):
+        return
+
+    docker_image = yml['docker_image']
+    print('dappled.yml specifies docker image "%s"' % docker_image)
+
+    if not sys.platform.startswith('linux'):
+        print('Docker/udocker support requires linux')
+        print('You can try rerunning with the --no-docker flag')
+        sys.exit()
+
+    from dappled.lib.utils import SignalCatcher
+    sc = SignalCatcher()
+
+    def run_cmd(cmd):
+        proc = subprocess.Popen(cmd, shell=False)
+        sc.add_proc(proc)
+        proc.wait()
+        sc.remove_proc(proc)
+
+    # get docker image
+    output = subprocess.check_output(['udocker.py', 'images'])
+    images = [x.split()[0] for x in output.strip().split('\n')[1:]]
+    if docker_image not in images:
+        print('Pulling docker image...')
+        run_cmd(['udocker.py', 'pull', docker_image])
+
+    # create a container from the docker image (intended to be unmutable)
+    container_name = 'dpl:' + docker_image[-26:] # udocker max name length is 30
+    output = subprocess.check_output(['udocker.py', 'ps'])
+    if container_name not in output:
+        print("Creating container...")
+        run_cmd(['udocker.py', 'create', '--name='+container_name, docker_image])
+
+    # run dappled command within udocker container
+    udocker_cmd = ['udocker.py', 'run', 
+            '--hostauth', '--hostenv', '--bindhome', '--volume=/run', 
+            '--user=%s' % os.environ['USER'], '--workdir=%s' % os.environ['PWD'], 
+            container_name, 
+            ]
+
+    cmd_str = ' '.join('"%s"' % x if ' ' in x else x for x in sys.argv)
+    # - udocker.py-invoked executable needs to exist inside the image, so let's use bash
+    # - PATH isn't passed through udocker.py correctly so do it manually
+    udocker_cmd.extend(["bash",  '-c', 'PATH="%s" %s' % (os.environ['PATH'], cmd_str)])
+
+    print('Launching udocker...')
+
+    os.environ['DOCKER_IMAGE'] = docker_image
+    run_cmd(udocker_cmd)
 
 def main():
     parser = argparse.ArgumentParser()
@@ -265,10 +328,12 @@ def main():
     init_parser = subparsers.add_parser("init")
     init_parser.add_argument('--language', type=str, default='python2')
     edit_parser = subparsers.add_parser("edit")
+    edit_parser.add_argument('--no-docker', action="store_true")
     edit_parser.add_argument('--password', action="store_true")
     edit_parser.add_argument('--server', action="store_true")
     run_parser = subparsers.add_parser("run")
     run_parser.add_argument("id", nargs='?')
+    run_parser.add_argument('--no-docker', action="store_true")
     # run_parser.add_argument('--port', type=int, default=8008)
     # run_parser.add_argument('--server', action="store_true")
     publish_parser = subparsers.add_parser("publish")
@@ -283,6 +348,9 @@ def main():
     args, unknown_args = parser.parse_known_args()
     if args.dappled_action != 'run':
         args = parser.parse_args()
+
+    if args.dappled_action in ('edit', 'run'):
+        handle_if_docker_request(args)
 
     # print(args)
 
