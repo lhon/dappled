@@ -5,6 +5,7 @@ import sys
 from dappled.lib.utils import unbuffered
 
 def patch():
+    # use dappled.yml instead of kapsel.yml
     from conda_kapsel.project_file import ProjectFile
     @classmethod
     def load_for_directory(cls, directory):
@@ -29,18 +30,18 @@ def patch():
     ProjectFile.orig_load = ProjectFile.load
     ProjectFile.load = ProjectFile_load
 
-    def ProjectFile_save(self):
-        # assume save only called once...
-        if self.injected_env_specs:
-            del self._yaml['env_specs']
+    # def ProjectFile_save(self):
+    #     # assume save only called once...
+    #     if self.injected_env_specs:
+    #         del self._yaml['env_specs']
 
-        del self._yaml['commands']
+    #     del self._yaml['commands']
 
-        self.orig_save()
-    ProjectFile.orig_save = ProjectFile.save
-    ProjectFile.save = ProjectFile_save
+    #     self.orig_save()
+    # ProjectFile.orig_save = ProjectFile.save
+    # ProjectFile.save = ProjectFile_save
 
-
+    # hides extra messages
     def prepare_main(args):
         """Start the prepare command and return exit status code."""
         from conda_kapsel.commands.prepare import prepare_command

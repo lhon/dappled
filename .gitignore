@@ -1,2 +1,4 @@
 *.pyc
 dappled.egg-info/
+build/
+dist/
