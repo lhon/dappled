@@ -53,6 +53,33 @@ def patch():
     import conda_kapsel.commands.prepare
     conda_kapsel.commands.prepare.main = prepare_main
 
+    # patch handles deprecation warning: ...bin/pip list: DEPRECATION: The default format will switch
+    # to columns in the future. You can use --format=(legacy|columns) (or define a
+    # format=(legacy|columns) in your pip.conf under the [list] section) to disable this
+    # warning.
+    def installed(prefix):
+        import re
+        from conda_kapsel.internal.pip_api import PipNotInstalledError, _call_pip
+        """Get a dict of package names to (name, version) tuples."""
+        if not os.path.isdir(prefix):
+            return dict()
+        try:
+            out = _call_pip(prefix, extra_args=['list', '--format=legacy']).decode('utf-8')
+            # on Windows, $ in a regex doesn't match \r\n, we need to get rid of \r
+            out = out.replace("\r\n", "\n")
+        except PipNotInstalledError:
+            out = ""  # if pip isn't installed, there are no pip packages
+        # the output to parse looks like:
+        #   ympy (0.7.6.1)
+        #   tables (3.2.2)
+        #   terminado (0.5)
+        line_re = re.compile("^ *([^ ]+) *\(([^)]+)\)$", flags=re.MULTILINE)
+        result = dict()
+        for match in line_re.finditer(out):
+            result[match.group(1)] = (match.group(1), match.group(2))
+        return result
+    import conda_kapsel.internal.pip_api
+    conda_kapsel.internal.pip_api.installed = installed
 
 def run_kapsel_command(*args):
     from conda_kapsel.commands.main import _parse_args_and_run_subcommand
