@@ -167,6 +167,7 @@ def handle_edit_action(args):
     kapsel_env = KapselEnv()
     options = []
     # options.append('--log-level=ERROR')
+    options.append('''--NotebookApp.nbserver_extensions={'dappled_core.nbserver_extension':True}''')
 
     # locate free port
     port = get_free_port(args.port, 50)
