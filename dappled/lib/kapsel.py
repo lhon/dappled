@@ -82,6 +82,56 @@ def patch():
     import conda_kapsel.internal.pip_api
     conda_kapsel.internal.pip_api.installed = installed
 
+    def _get_conda_command(extra_args):
+        # just use whatever conda is on the path
+        # cmd_list = ['conda']
+        # unbuffered python output
+        cmd_list = ['python', '-u', '-m', 'conda']
+
+        cmd_list.extend(extra_args)
+        # print(cmd_list)
+        return cmd_list
+    import conda_kapsel.internal.conda_api
+    conda_kapsel.internal.conda_api._get_conda_command = _get_conda_command
+
+    from conda_kapsel.internal.conda_api import _call_conda as _call_conda_orig
+    def _call_conda(extra_args):
+        from conda_kapsel.internal.conda_api import _get_conda_command, CondaError
+
+        # only commandeer function on installing and creating
+        if extra_args[0] in ('install', 'create'):
+            if '--quiet' in extra_args:
+                extra_args.remove('--quiet')
+        else:
+            return _call_conda_orig(extra_args)
+
+        cmd_list = _get_conda_command(extra_args)
+
+        try:
+            p = subprocess.Popen(cmd_list, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+        except OSError as e:
+            raise CondaError("failed to run: %r: %r" % (" ".join(cmd_list), repr(e)))
+        out = []
+        for line in unbuffered(p):
+            out.append(line)
+
+            # show progressive install status messages properly
+            if line and line[0] == '[' and line[-1] == '%':
+                print('\r', line, end="")
+                sys.stdout.flush()
+                if line.endswith('100%'):
+                    print()
+            elif 'ing packages ...' in line:
+                print(line)
+
+        # TODO: parse output for error
+        if p.returncode != 0:
+            errstr = 'an error occurred'
+            raise CondaError('%s: %s' % (" ".join(cmd_list), errstr))
+
+        return ''.join(out)
+    conda_kapsel.internal.conda_api._call_conda = _call_conda
+
 def run_kapsel_command(*args):
     from conda_kapsel.commands.main import _parse_args_and_run_subcommand
     argv = [''] + list(args)
@@ -96,7 +146,7 @@ class KapselEnv:
         project = load_project(dirname)
         ui_mode = UI_MODE_TEXT_DEVELOPMENT_DEFAULTS_OR_ASK
         conda_environment = 'default'
-        print('Preparing environment')
+        print('Preparing environment...')
         result = prepare_with_ui_mode_printing_errors(project, ui_mode=ui_mode, env_spec_name=conda_environment)
         if result.failed:
             print("failed")
@@ -108,7 +158,7 @@ class KapselEnv:
         self._prepare()
 
     def _prepare(self):
-        print('Setting up jupyter extensions')
+        print('Setting up jupyter extensions...')
         dappled_core_path = os.path.dirname(
             self.run('python', '-c', 'import dappled_core; print(dappled_core.__file__)'))
         nbextension_path = os.path.join(dappled_core_path, 'static', 'nbextension')
