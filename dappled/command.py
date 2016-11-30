@@ -119,7 +119,8 @@ def handle_init_action(args):
                 )
             yml['packages'].insert(0, 'python=3')
         elif args.language in ('r', 'R'):
-            yml['packages'].insert(0, 'r-base=3.3.1=1') # https://github.com/jupyter/docker-stacks/issues/210
+            if sys.platform.startswith('linux'):
+                yml['packages'].insert(0, 'r-base=3.3.1=1') # https://github.com/jupyter/docker-stacks/issues/210
             yml['packages'].insert(0, 'r-irkernel')
             yml['channels'].insert(0, 'r')
 
