@@ -82,6 +82,50 @@ def patch():
     import conda_kapsel.internal.pip_api
     conda_kapsel.internal.pip_api.installed = installed
 
+    # allows explicit python=2/3 specification
+    def fix_environment_deviations(self, prefix, spec, deviations=None):
+        import os
+
+        from conda_kapsel.conda_manager import CondaManager, CondaEnvironmentDeviations, CondaManagerError
+        import conda_kapsel.internal.conda_api as conda_api
+        import conda_kapsel.internal.pip_api as pip_api
+
+        if deviations is None:
+            deviations = self.find_environment_deviations(prefix, spec)
+
+        # command_line_packages = set(['python']).union(set(spec.conda_packages))
+        command_line_packages = set(spec.conda_packages)
+        if ('python' not in command_line_packages and 
+            not any(x.startswith('python=') for x in command_line_packages)
+            ):
+            command_line_packages.add('python')
+
+        if os.path.isdir(os.path.join(prefix, 'conda-meta')):
+            missing = deviations.missing_packages
+            if len(missing) > 0:
+                try:
+                    # TODO we are ignoring package versions here
+                    # https://github.com/Anaconda-Server/conda-kapsel/issues/77
+                    conda_api.install(prefix=prefix, pkgs=list(missing), channels=spec.channels)
+                except conda_api.CondaError as e:
+                    raise CondaManagerError("Failed to install missing packages: " + ", ".join(missing))
+        else:
+            # Create environment from scratch
+            try:
+                conda_api.create(prefix=prefix, pkgs=list(command_line_packages), channels=spec.channels)
+            except conda_api.CondaError as e:
+                raise CondaManagerError("Failed to create environment at %s: %s" % (prefix, str(e)))
+
+        # now add pip if needed
+        missing = list(deviations.missing_pip_packages)
+        if len(missing) > 0:
+            try:
+                pip_api.install(prefix=prefix, pkgs=missing)
+            except pip_api.PipError as e:
+                raise CondaManagerError("Failed to install missing pip packages: " + ", ".join(missing))
+    from conda_kapsel.internal.default_conda_manager import DefaultCondaManager
+    DefaultCondaManager.fix_environment_deviations = fix_environment_deviations
+
     def _get_conda_command(extra_args):
         # just use whatever conda is on the path
         # cmd_list = ['conda']
@@ -168,6 +212,9 @@ class KapselEnv:
         self.run('jupyter', 'dashboards', 'quick-setup', '--sys-prefix', '--InstallNBExtensionApp.log_level=CRITICAL')
 
     def run(self, *cmd_list, **kwargs):
+        if kwargs.get('execvpe'):
+            os.execvpe(cmd_list[0], cmd_list, self.env)
+
         try:
             p = subprocess.Popen(cmd_list, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, 
                 cwd=self.dirname, env=self.env, bufsize=1)

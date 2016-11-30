@@ -110,6 +110,14 @@ def handle_init_action(args):
                 language="python",
                 name="python2",
                 )
+            yml['packages'].insert(0, 'python=2')
+        elif args.language == 'python3':
+            notebook_template['metadata']['kernelspec'] = dict(
+                display_name="Python 3",
+                language="python",
+                name="python3",
+                )
+            yml['packages'].insert(0, 'python=3')
         elif args.language in ('r', 'R'):
             yml['packages'].insert(0, 'r-base=3.3.1=1') # https://github.com/jupyter/docker-stacks/issues/210
             yml['packages'].insert(0, 'r-irkernel')
@@ -207,7 +215,7 @@ def handle_run_action(args, unknown_args):
     # run_kapsel_command('run', 'dappled-run')
     kapsel_env = KapselEnv()
     cmd_list = ['dappled-run'] + unknown_args
-    kapsel_env.run(*cmd_list, print_stdout=True)
+    kapsel_env.run(*cmd_list, execvpe=True)
 
 def handle_publish_action(args):
 
