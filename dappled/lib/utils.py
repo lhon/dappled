@@ -3,6 +3,7 @@ import subprocess
 import netifaces
 import socket
 import signal
+import errno
 
 # http://blog.thelinuxkid.com/2013/06/get-python-subprocess-output-without.html
 # Unix, Windows and old Macintosh end-of-line
@@ -62,10 +63,10 @@ def get_free_port(port, port_retries):
             return port
         except socket.error as e:
             if e.errno == errno.EADDRINUSE:
-                self.log.info('The port %i is already in use, trying another port.' % port)
+                print('The port %i is already in use, trying another port.' % port)
                 continue
             elif e.errno in (errno.EACCES, getattr(errno, 'WSAEACCES', errno.EACCES)):
-                self.log.warn("Permission to listen on port %i denied" % port)
+                print("Permission to listen on port %i denied" % port)
                 continue
             else:
                 raise
