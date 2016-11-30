@@ -160,12 +160,17 @@ def patch():
             out.append(line)
 
             # show progressive install status messages properly
-            if line and line[0] == '[' and line[-1] == '%':
+            if line and (
+                (line[0] == '[' and line[-1] == '%') or
+                '% |' in line
+                ):
                 print('\r', line, end="")
                 sys.stdout.flush()
                 if line.endswith('100%'):
                     print()
             elif 'ing packages ...' in line:
+                if line.startswith('Extracting'):
+                    print()
                 print(line)
 
         # TODO: parse output for error
