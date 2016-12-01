@@ -148,6 +148,8 @@ def handle_init_action(args):
         print(ruamel.yaml.dump(yml, Dumper=ruamel.yaml.RoundTripDumper), file=f)
 
 def handle_edit_action(args):
+    handle_if_docker_request(args)
+
     if os.path.exists('dappled.yml'):
         yml = ruamel.yaml.load(open('dappled.yml').read(), ruamel.yaml.RoundTripLoader) 
     else:
@@ -213,6 +215,9 @@ def handle_run_action(args, unknown_args):
         path = paths[0]
         print(path)
         os.chdir(path)
+
+    handle_if_docker_request(args)
+
     # run_kapsel_command('run', 'dappled-run')
     kapsel_env = KapselEnv()
     cmd_list = ['dappled-run'] + unknown_args
@@ -272,6 +277,8 @@ def handle_prepare_action(args):
 
         write_notebook_data(data, path)
         os.chdir(path)
+
+    handle_if_docker_request(args)
 
     kapsel_env = KapselEnv()
 
@@ -371,6 +378,7 @@ def main():
     publish_parser = subparsers.add_parser("publish")
     prepare_parser = subparsers.add_parser("prepare")
     prepare_parser.add_argument("id", nargs='?')
+    prepare_parser.add_argument('--no-docker', action="store_true")
     clone_parser = subparsers.add_parser("clone")
     clone_parser.add_argument("id")
     clean_parser = subparsers.add_parser("clean")
@@ -380,11 +388,6 @@ def main():
     args, unknown_args = parser.parse_known_args()
     if args.dappled_action != 'run':
         args = parser.parse_args()
-
-    if args.dappled_action in ('edit', 'run'):
-        handle_if_docker_request(args)
-
-    # print(args)
 
     if args.dappled_action == 'init':
         handle_init_action(args)
