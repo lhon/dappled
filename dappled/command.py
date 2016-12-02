@@ -351,7 +351,8 @@ def handle_if_docker_request(args):
     cmd_str = ' '.join('"%s"' % x if ' ' in x else x for x in sys.argv)
     # - udocker.py-invoked executable needs to exist inside the image, so let's use bash
     # - PATH isn't passed through udocker.py correctly so do it manually
-    udocker_cmd.extend(["bash",  '-c', 'PATH="%s" %s' % (os.environ['PATH'], cmd_str)])
+    # - command needs to be a single argument
+    udocker_cmd.append("""bash -c 'PATH="%s" %s'""" % (os.environ['PATH'], cmd_str))
 
     print('Launching udocker...')
 
