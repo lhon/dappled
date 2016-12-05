@@ -4,6 +4,9 @@ import subprocess
 import sys
 from dappled.lib.utils import unbuffered, watch_conda_install
 
+class DappledError(Exception):
+    pass
+
 def patch():
     # use dappled.yml instead of kapsel.yml
     from conda_kapsel.project_file import ProjectFile
@@ -108,13 +111,13 @@ def patch():
                     # https://github.com/Anaconda-Server/conda-kapsel/issues/77
                     conda_api.install(prefix=prefix, pkgs=list(missing), channels=spec.channels)
                 except conda_api.CondaError as e:
-                    raise CondaManagerError("Failed to install missing packages: " + ", ".join(missing))
+                    raise DappledError("Failed to install missing packages: " + ", ".join(missing))
         else:
             # Create environment from scratch
             try:
                 conda_api.create(prefix=prefix, pkgs=list(command_line_packages), channels=spec.channels)
             except conda_api.CondaError as e:
-                raise CondaManagerError("Failed to create environment at %s: %s" % (prefix, str(e)))
+                raise DappledError("Failed to create environment at %s: %s" % (prefix, str(e)))
 
         # now add pip if needed
         missing = list(deviations.missing_pip_packages)
@@ -122,7 +125,7 @@ def patch():
             try:
                 pip_api.install(prefix=prefix, pkgs=missing)
             except pip_api.PipError as e:
-                raise CondaManagerError("Failed to install missing pip packages: " + ", ".join(missing))
+                raise DappledError("Failed to install missing pip packages: " + ", ".join(missing))
     from conda_kapsel.internal.default_conda_manager import DefaultCondaManager
     DefaultCondaManager.fix_environment_deviations = fix_environment_deviations
 
@@ -181,7 +184,11 @@ class KapselEnv:
         ui_mode = UI_MODE_TEXT_DEVELOPMENT_DEFAULTS_OR_ASK
         conda_environment = 'default'
         print('Preparing environment...')
-        result = prepare_with_ui_mode_printing_errors(project, ui_mode=ui_mode, env_spec_name=conda_environment)
+        try:
+            result = prepare_with_ui_mode_printing_errors(project, ui_mode=ui_mode, env_spec_name=conda_environment)
+        except DappledError as e:
+            print(e)
+            return None
         if result.failed:
             print("failed")
             return None
@@ -192,7 +199,7 @@ class KapselEnv:
         self._prepare()
 
     def _prepare(self):
-        print('Setting up jupyter extensions...')
+        # print('Setting up jupyter extensions...')
         dappled_core_path = os.path.dirname(
             self.run('python', '-c', 'import dappled_core; print(dappled_core.__file__)'))
         nbextension_path = os.path.join(dappled_core_path, 'static', 'nbextension')

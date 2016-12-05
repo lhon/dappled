@@ -147,6 +147,8 @@ def handle_init_action(args):
     with open('dappled.yml', 'w') as f:
         print(ruamel.yaml.dump(yml, Dumper=ruamel.yaml.RoundTripDumper), file=f)
 
+    kapsel_env = KapselEnv()
+
 def handle_edit_action(args):
     if handle_if_docker_request(args):
         return
