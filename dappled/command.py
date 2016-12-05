@@ -397,6 +397,14 @@ def handle_if_docker_request(args):
 
     return True
 
+def handle_install_action(args):
+    cmd_list = ['add-packages'] 
+    if args.channel:
+        for c in args.channel:
+            cmd_list.extend(['-c', c])
+    cmd_list.extend(args.packages)
+    run_kapsel_command(*cmd_list)
+
 def main():
     parser = argparse.ArgumentParser()
     subparsers = parser.add_subparsers(dest='dappled_action', help='dappled actions')
@@ -422,6 +430,10 @@ def main():
     clone_parser.add_argument("id")
     clean_parser = subparsers.add_parser("clean")
 
+    install_parser = subparsers.add_parser("install")
+    install_parser.add_argument("packages", nargs="+")
+    install_parser.add_argument('--channel', '-c', action='append')
+
     # a_parser.add_argument("something", choices=['a1', 'a2'])
 
     args, unknown_args = parser.parse_known_args()
@@ -442,6 +454,9 @@ def main():
         handle_clone_action(args)
     elif args.dappled_action == 'clean':
         handle_clean_action(args)
+    elif args.dappled_action == 'install':
+        handle_install_action(args)
+
 
 if __name__ == '__main__':
     main()
