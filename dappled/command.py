@@ -333,7 +333,17 @@ def handle_clone_action(args):
 
     data = download_notebook_data(args.id)
 
-    write_notebook_data(data)
+    if not args.include_env:
+        write_notebook_data(data)
+    else:
+        write_notebook_data(data, write_environment_yml=True)
+        cmd_list = ['python', '-u', '-m', 'conda', 'env', 'create', '-f', 'environment.yml', '-p', 'envs/default']
+        try:
+            p = subprocess.Popen(cmd_list, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+        except OSError as e:
+            raise CondaError("failed to run: %r: %r" % (" ".join(cmd_list), repr(e)))
+
+        out = watch_conda_install(p)
 
 def handle_clean_action(args):
     run_kapsel_command('clean')
@@ -436,6 +446,7 @@ def main():
     prepare_parser.add_argument('--no-docker', action="store_true")
     clone_parser = subparsers.add_parser("clone")
     clone_parser.add_argument("id")
+    clone_parser.add_argument('--include-env', action="store_true")
     clean_parser = subparsers.add_parser("clean")
 
     install_parser = subparsers.add_parser("install")
