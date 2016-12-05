@@ -1,8 +1,10 @@
+from __future__ import absolute_import, print_function
 import contextlib
 import subprocess
 import netifaces
 import socket
 import signal
+import sys
 import errno
 
 # http://blog.thelinuxkid.com/2013/06/get-python-subprocess-output-without.html
@@ -94,5 +96,24 @@ class SignalCatcher:
     def remove_proc(self, proc):
         self.current_subprocs.remove(proc)
 
+def watch_conda_install(p):
+    out = []
+    for line in unbuffered(p):
+        out.append(line)
 
+        # show progressive install status messages properly
+        if line and (
+            (line[0] == '[' and line[-1] == '%') or
+            '% |' in line
+            ):
+            print('\r', line, end="")
+            sys.stdout.flush()
+            if line.endswith('100%'):
+                print()
+        elif 'ing packages ...' in line:
+            if line.startswith('Extracting'):
+                print()
+            print(line)
+
+    return out
 

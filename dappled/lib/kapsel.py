@@ -2,7 +2,7 @@ from __future__ import absolute_import, print_function
 import os
 import subprocess
 import sys
-from dappled.lib.utils import unbuffered
+from dappled.lib.utils import unbuffered, watch_conda_install
 
 def patch():
     # use dappled.yml instead of kapsel.yml
@@ -155,23 +155,8 @@ def patch():
             p = subprocess.Popen(cmd_list, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
         except OSError as e:
             raise CondaError("failed to run: %r: %r" % (" ".join(cmd_list), repr(e)))
-        out = []
-        for line in unbuffered(p):
-            out.append(line)
 
-            # show progressive install status messages properly
-            if line and (
-                (line[0] == '[' and line[-1] == '%') or
-                '% |' in line
-                ):
-                print('\r', line, end="")
-                sys.stdout.flush()
-                if line.endswith('100%'):
-                    print()
-            elif 'ing packages ...' in line:
-                if line.startswith('Extracting'):
-                    print()
-                print(line)
+        out = watch_conda_install(p)
 
         # TODO: parse output for error
         if p.returncode != 0:

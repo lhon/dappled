@@ -24,7 +24,7 @@ from dappled.lib.kapsel import run_kapsel_command, KapselEnv
 import dappled.lib.kapsel
 dappled.lib.kapsel.patch()
 
-from dappled.lib.utils import get_free_port, get_ip_addresses
+from dappled.lib.utils import get_free_port, get_ip_addresses, watch_conda_install
 
 requests = Session()
 if 'DAPPLED_HOST' in os.environ:
@@ -148,7 +148,8 @@ def handle_init_action(args):
         print(ruamel.yaml.dump(yml, Dumper=ruamel.yaml.RoundTripDumper), file=f)
 
 def handle_edit_action(args):
-    handle_if_docker_request(args)
+    if handle_if_docker_request(args):
+        return
 
     if os.path.exists('dappled.yml'):
         yml = ruamel.yaml.load(open('dappled.yml').read(), ruamel.yaml.RoundTripLoader) 
@@ -209,6 +210,7 @@ def handle_edit_action(args):
     run_kapsel_command('run', filename, *options)
 
 def handle_run_action(args, unknown_args):
+
     if args.id is not None:
         paths = glob(os.path.join(DAPPLED_PATH, 'nb', args.id+'*'))
         paths.sort(key=lambda x: x.split('.v')[1], reverse=True)
@@ -216,7 +218,8 @@ def handle_run_action(args, unknown_args):
         print(path)
         os.chdir(path)
 
-    handle_if_docker_request(args)
+    if handle_if_docker_request(args):
+        return
 
     # run_kapsel_command('run', 'dappled-run')
     kapsel_env = KapselEnv()
@@ -244,19 +247,23 @@ def handle_publish_action(args):
     ]
     requests.post(HOST+'/api/publish', files=multiple_files)
 
-def download_notebook_data(id):
-    if not id:
-        print('need to specify a notebook to clone')
-        sys.exit()
+def download_notebook_data(id, include_env=False):
+    params=dict(id=id)
 
-    r = requests.get(HOST+'/api/clone', params=dict(
-        id=id
-        ))
+    if include_env:
+        from conda.base.context import Context
+        context = Context()
+        params.update(dict(
+            platform = context.platform,
+            bits = context.bits,
+            ))
+
+    r = requests.get(HOST+'/api/clone', params=params)
     data = r.json()
 
     return data
 
-def write_notebook_data(data, path=''):
+def write_notebook_data(data, path='', write_environment_yml=False):
     with open(os.path.join(path, 'dappled.yml'), 'w') as f:
         print(data['dappled_yml'], file=f)
 
@@ -265,20 +272,49 @@ def write_notebook_data(data, path=''):
     with open(os.path.join(path, filename), 'w') as f:
         print(data['notebook'], file=f)
 
-def handle_prepare_action(args):
-    if args.id is not None:
-        data = download_notebook_data(args.id)
+    if write_environment_yml:
+        with open(os.path.join(path, 'environment.yml'), 'w') as f:
+            print(data['env'], file=f)
 
-        id = '.'.join([data['publish_id'], data['version']])
+def setup_published(id):
+    if '.' in id:
         path = os.path.join(DAPPLED_PATH, 'nb', id)
 
-        try: os.makedirs(path)
-        except: pass
+        if os.path.exists(path):
+            print(path)
+            os.chdir(path)
+            return id
 
-        write_notebook_data(data, path)
-        os.chdir(path)
+    data = download_notebook_data(id, include_env=True)
 
-    handle_if_docker_request(args)
+    id = '.'.join([data['publish_id'], data['version']])
+    path = os.path.join(DAPPLED_PATH, 'nb', id)
+
+    try: os.makedirs(path)
+    except: pass
+
+    write_notebook_data(data, path, write_environment_yml=True)
+
+    os.chdir(path)
+    print(path)
+    return id
+
+
+def handle_prepare_action(args):
+
+    if args.id is not None:
+        id = setup_published(args.id)
+        sys.argv = [id if x==args.id else x for x in sys.argv] # replace with updated id, in case docker is requested
+
+        cmd_list = ['python', '-u', '-m', 'conda', 'env', 'create', '-f', 'environment.yml', '-p', 'envs/default']
+        try:
+            p = subprocess.Popen(cmd_list, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+        except OSError as e:
+            raise CondaError("failed to run: %r: %r" % (" ".join(cmd_list), repr(e)))
+
+        out = watch_conda_install(p)
+
+    if handle_if_docker_request(args): return
 
     kapsel_env = KapselEnv()
 
@@ -296,10 +332,10 @@ def handle_clean_action(args):
 
 def handle_if_docker_request(args):
     if 'DOCKER_IMAGE' in os.environ:
-        return # already in container
+        return False # already in container
 
     if args.no_docker:
-        return
+        return False
 
     if os.path.exists('dappled.yml'):
         yml = ruamel.yaml.load(open('dappled.yml').read(), ruamel.yaml.RoundTripLoader) 
@@ -308,7 +344,7 @@ def handle_if_docker_request(args):
         sys.exit()
 
     if not yml.get('docker_image'):
-        return
+        return False
 
     docker_image = yml['docker_image']
     print('dappled.yml specifies docker image "%s"' % docker_image)
@@ -358,6 +394,8 @@ def handle_if_docker_request(args):
 
     os.environ['DOCKER_IMAGE'] = docker_image
     run_cmd(udocker_cmd)
+
+    return True
 
 def main():
     parser = argparse.ArgumentParser()
