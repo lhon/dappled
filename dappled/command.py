@@ -60,8 +60,6 @@ def call_conda_env_export():
     return out
 
 dappled_yml_template = '''
-notebook_id:
-
 name: Untitled
 
 filename: notebook.ipynb
@@ -101,6 +99,7 @@ def handle_init_action(args):
     if os.path.exists('dappled.yml'):
         yml = ruamel.yaml.load(open('dappled.yml').read(), ruamel.yaml.RoundTripLoader) 
     else:
+        print('Creating dappled.yml')
         yml = ruamel.yaml.load(dappled_yml_template, ruamel.yaml.RoundTripLoader)
 
         notebook_template = json.loads(notebook_ipynb_template)
@@ -133,14 +132,11 @@ def handle_init_action(args):
         else:
             assert False
 
-
-    if 'notebook_id' not in yml or not yml['notebook_id']:
-        yml['notebook_id'] = str(uuid.uuid4())
-
     if not yml.get('filename'):
         yml['filename'] = 'notebook.ipynb'
     filename = yml['filename']
     if not os.path.exists(filename):
+        print('Creating', filename)
         with open(filename, 'w') as f:
             print(json.dumps(notebook_template), file=f)
 
@@ -241,13 +237,23 @@ def handle_publish_action(args):
     yml = ruamel.yaml.load(open('dappled.yml').read(), ruamel.yaml.RoundTripLoader) 
     notebook_filename = yml['filename']
 
+    # kapsel_env = KapselEnv()
+
     multiple_files = [
         ('options', ('options.json', json.dumps(options), 'application/json')),
         ('dappled.yml', ('dappled.yml', open('dappled.yml', 'rb').read(), 'text/x-yaml')),
         ('notebook.ipynb', (notebook_filename, open(notebook_filename, 'rb').read(), 'application/json')),
         ('environment.yml', ('environment.yml', call_conda_env_export(), 'text/x-yaml')),
     ]
-    requests.post(HOST+'/api/publish', files=multiple_files)
+    r = requests.post(HOST+'/api/publish', files=multiple_files)
+    rj = r.json()
+    if rj['success']:
+        yml['publish_id'] = rj['publish_id']
+        with open('dappled.yml', 'w') as f:
+            print(ruamel.yaml.dump(yml, Dumper=ruamel.yaml.RoundTripDumper), file=f)
+        print('Published as', rj['publish_id'], 'version', rj['version'])
+    else:
+        print(rj['message'])
 
 def download_notebook_data(id, include_env=False):
     params=dict(id=id)
