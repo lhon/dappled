@@ -32,7 +32,11 @@ if 'DAPPLED_HOST' in os.environ:
     requests.verify = False
 else:
     HOST = 'https://dappled.io'
-DAPPLED_PATH = appdirs.user_cache_dir('dappled') # user_data_dir has space on OSX
+
+if os.name == 'nt':
+    DAPPLED_PATH = appdirs.user_data_dir('dappled')
+else:
+    DAPPLED_PATH = os.path.expanduser('~/.dappled')
 
 def call_conda_env_export():
     env = os.environ.copy()
