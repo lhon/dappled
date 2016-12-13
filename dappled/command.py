@@ -20,7 +20,7 @@ except:
     ruamel = imp.new_module('ruamel')
     ruamel.yaml = sys.modules['ruamel.yaml'] = ruamel_yaml
 
-from dappled.lib.kapsel import run_kapsel_command, KapselEnv
+from dappled.lib.kapsel import run_kapsel_command, KapselEnv, DappledError
 import dappled.lib.kapsel
 dappled.lib.kapsel.patch()
 
@@ -463,22 +463,25 @@ def main():
     if args.dappled_action != 'run':
         args = parser.parse_args()
 
-    if args.dappled_action == 'init':
-        handle_init_action(args)
-    elif args.dappled_action == 'edit':
-        handle_edit_action(args)
-    elif args.dappled_action == 'run':
-        handle_run_action(args, unknown_args)
-    elif args.dappled_action == 'publish':
-        handle_publish_action(args)
-    elif args.dappled_action == 'prepare':
-        handle_prepare_action(args)
-    elif args.dappled_action == 'clone':
-        handle_clone_action(args)
-    elif args.dappled_action == 'clean':
-        handle_clean_action(args)
-    elif args.dappled_action == 'install':
-        handle_install_action(args)
+    try:
+        if args.dappled_action == 'init':
+            handle_init_action(args)
+        elif args.dappled_action == 'edit':
+            handle_edit_action(args)
+        elif args.dappled_action == 'run':
+            handle_run_action(args, unknown_args)
+        elif args.dappled_action == 'publish':
+            handle_publish_action(args)
+        elif args.dappled_action == 'prepare':
+            handle_prepare_action(args)
+        elif args.dappled_action == 'clone':
+            handle_clone_action(args)
+        elif args.dappled_action == 'clean':
+            handle_clean_action(args)
+        elif args.dappled_action == 'install':
+            handle_install_action(args)
+    except DappledError as e:
+        print(e)
 
 
 if __name__ == '__main__':

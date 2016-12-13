@@ -164,6 +164,7 @@ def patch():
         # TODO: parse output for error
         if p.returncode != 0:
             errstr = 'an error occurred'
+            print('\n'.join(out))
             raise CondaError('%s: %s' % (" ".join(cmd_list), errstr))
 
         return ''.join(out)
@@ -184,11 +185,7 @@ class KapselEnv:
         ui_mode = UI_MODE_TEXT_DEVELOPMENT_DEFAULTS_OR_ASK
         conda_environment = 'default'
         print('Preparing environment...')
-        try:
-            result = prepare_with_ui_mode_printing_errors(project, ui_mode=ui_mode, env_spec_name=conda_environment)
-        except DappledError as e:
-            print(e)
-            return None
+        result = prepare_with_ui_mode_printing_errors(project, ui_mode=ui_mode, env_spec_name=conda_environment)
         if result.failed:
             print("failed")
             return None
