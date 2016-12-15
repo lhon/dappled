@@ -6,6 +6,7 @@ import socket
 import signal
 import sys
 import errno
+import os
 
 # http://blog.thelinuxkid.com/2013/06/get-python-subprocess-output-without.html
 # Unix, Windows and old Macintosh end-of-line
@@ -106,7 +107,7 @@ def watch_conda_install(p):
             (line[0] == '[' and line[-1] == '%') or
             '% |' in line
             ):
-            print('\r', line, end="")
+            print('\r', line, sep="", end="")
             sys.stdout.flush()
             if line.endswith('100%'):
                 print()
@@ -116,4 +117,25 @@ def watch_conda_install(p):
             print(line)
 
     return out
+
+# http://stackoverflow.com/questions/377017/test-if-executable-exists-in-python/377028#377028
+def which(program, pathstr=None):
+    if pathstr is None:
+        pathstr = os.environ["PATH"]
+
+    def is_exe(fpath):
+        return os.path.isfile(fpath) and os.access(fpath, os.X_OK)
+
+    fpath, fname = os.path.split(program)
+    if fpath:
+        if is_exe(program):
+            return program
+    else:
+        for path in pathstr.split(os.pathsep):
+            path = path.strip('"')
+            exe_file = os.path.join(path, program)
+            if is_exe(exe_file):
+                return exe_file
+
+    return None
 

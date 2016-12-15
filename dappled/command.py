@@ -226,7 +226,7 @@ def handle_run_action(args, unknown_args):
     # run_kapsel_command('run', 'dappled-run')
     kapsel_env = KapselEnv()
     cmd_list = ['dappled-run'] + unknown_args
-    kapsel_env.run(*cmd_list, execvpe=True)
+    kapsel_env.run(*cmd_list, print_stdout=True)
 
 def handle_publish_action(args):
 

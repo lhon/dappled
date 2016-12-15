@@ -2,7 +2,7 @@ from __future__ import absolute_import, print_function
 import os
 import subprocess
 import sys
-from dappled.lib.utils import unbuffered, watch_conda_install
+from dappled.lib.utils import unbuffered, watch_conda_install, which
 
 class DappledError(Exception):
     pass
@@ -190,13 +190,15 @@ class KapselEnv:
             print("failed")
             return None
 
-        self.env = result.environ
+        # windows only allows strings for env
+        self.env = dict([str(k), str(v)] for k,v in result.environ.items())
+        self.env['PYTHONUNBUFFERED'] = '1'
+
         self.dirname = dirname
 
         self._prepare()
 
     def _prepare(self):
-        # print('Setting up jupyter extensions...')
         dappled_core_path = os.path.dirname(
             self.run('python', '-c', 'import dappled_core; print(dappled_core.__file__)'))
         nbextension_path = os.path.join(dappled_core_path, 'static', 'nbextension')
@@ -206,6 +208,13 @@ class KapselEnv:
         self.run('jupyter', 'dashboards', 'quick-setup', '--sys-prefix', '--InstallNBExtensionApp.log_level=CRITICAL')
 
     def run(self, *cmd_list, **kwargs):
+
+        # get full path of exe for windows
+        exe = cmd_list[0] if os.name != 'nt' else cmd_list[0] + '.exe'
+        exe_path = which(exe, pathstr=self.env['PATH'])
+        cmd_list = list(cmd_list)
+        cmd_list[0] = exe_path
+
         if kwargs.get('execvpe'):
             os.execvpe(cmd_list[0], cmd_list, self.env)
 
@@ -217,6 +226,10 @@ class KapselEnv:
 
         out = []
         for line in unbuffered(p):
+
+            # extra chatter from dappled-core/web.py to support ctrl-c on Windows
+            if line == 'ping-%#@($': continue
+
             if kwargs.get('print_stdout'): print(line)
             out.append(line)
         # err = p.stderr.read()
