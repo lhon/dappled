@@ -376,14 +376,39 @@ def handle_if_docker_request(args):
         print('You can try rerunning with the --no-docker flag')
         sys.exit()
 
-    from dappled.lib.utils import SignalCatcher
-    sc = SignalCatcher()
-
     def run_cmd(cmd):
-        proc = subprocess.Popen(cmd, shell=False)
-        sc.add_proc(proc)
-        proc.wait()
-        sc.remove_proc(proc)
+
+        import signal
+        original_sigint = signal.getsignal(signal.SIGINT)
+
+        # http://stackoverflow.com/a/18115530/5679888
+        # http://stackoverflow.com/a/32222971/5679888
+        def exit_gracefully(signum, frame):
+            # restore the original signal handler as otherwise evil things will happen
+            # in raw_input when CTRL+C is pressed, and our signal handler is not re-entrant
+            signal.signal(signal.SIGINT, original_sigint)
+
+            try:
+                if raw_input("\nReally quit? (y/n)> ").lower().startswith('y'):
+                    os.killpg(pgrp, signal.SIGTERM)
+                    # proc.send_signal(signal.SIGTERM)
+                    sys.exit(1)
+
+            except KeyboardInterrupt:
+                print("Ok ok, quitting")
+                os.killpg(pgrp, signal.SIGTERM)
+                sys.exit(1)
+
+            # restore the exit gracefully handler here    
+            signal.signal(signal.SIGINT, exit_gracefully)
+
+
+        signal.signal(signal.SIGINT, exit_gracefully)
+        proc = subprocess.Popen(cmd, shell=False, stdin=subprocess.PIPE, preexec_fn=os.setsid)
+        pgrp = os.getpgid(proc.pid)
+
+        # http://stackoverflow.com/a/33277846/5679888
+        proc.communicate()
 
     # get docker image
     output = subprocess.check_output(['udocker.py', 'images'])
