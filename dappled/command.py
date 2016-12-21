@@ -214,7 +214,11 @@ def handle_edit_action(args):
 def handle_run_action(args, unknown_args):
 
     if args.id is not None:
-        paths = glob(os.path.join(DAPPLED_PATH, 'nb', args.id+'*'))
+        if '/' in args.id:
+            id = args.id.split('/', 1)[1]
+        else:
+            id = args.id
+        paths = glob(os.path.join(DAPPLED_PATH, 'nb', id+'*'))
         paths.sort(key=lambda x: x.split('.v')[1], reverse=True)
         path = paths[0]
         print(path)
@@ -329,6 +333,12 @@ def handle_prepare_action(args):
     if handle_if_docker_request(args): return
 
     kapsel_env = KapselEnv()
+
+    if args.id is not None:
+        print(args.id, 'is ready. To run this notebook use this command:')
+        print()
+        print('   dappled run', args.id)
+        print()
 
 def handle_clone_action(args):
     if os.path.exists('dappled.yml'):
