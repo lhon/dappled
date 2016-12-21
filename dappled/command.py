@@ -127,7 +127,6 @@ def handle_init_action(args):
             yml['packages'].insert(0, 'r-irkernel')
             yml['channels'].insert(0, 'r')
 
-            notebook_ipynb_template_fn = 'templates/R/notebook.ipynb'
             notebook_template['metadata']['kernelspec'] = dict(
                 display_name="R",
                 language="R",
@@ -297,7 +296,7 @@ def setup_published(id):
         path = os.path.join(DAPPLED_PATH, 'nb', id)
 
         if os.path.exists(path):
-            print(path)
+            # print(path)
             os.chdir(path)
             return id
 
@@ -452,6 +451,8 @@ def handle_if_docker_request(args):
     os.environ['DOCKER_IMAGE'] = docker_image
     run_cmd(udocker_cmd)
 
+    print('exited udocker')
+
     return True
 
 def handle_install_action(args):
@@ -462,37 +463,68 @@ def handle_install_action(args):
     cmd_list.extend(args.packages)
     run_kapsel_command(*cmd_list)
 
+class ArgumentParser(argparse.ArgumentParser):
+    def print_help(self):
+        super(ArgumentParser, self).print_help()
+
+        if self.prog == 'dappled' and sys.argv[1:] in ([], ['help'], ['-h'], ['--help']):
+            print("""
+Example Commands
+----------------
+
+# Installing and running a published notebook
+dappled run dappled/hello
+
+# Cloning, editing, and running a published notebook
+mkdir hello && cd hello
+dappled clone dappled/hello
+dappled edit
+dappled run
+
+# Creating, editing, and publishing a new project and notebook
+mkdir test && cd test
+dappled init
+dappled edit
+dappled publish
+
+# Installing a conda package
+dappled install matplotlib
+""")
+
 def main():
-    parser = argparse.ArgumentParser()
-    subparsers = parser.add_subparsers(dest='dappled_action', help='dappled actions')
+    parser = ArgumentParser(description="dappled is a tool for creating, editing, and publishing deployable notebooks")
+    subparsers = parser.add_subparsers(dest='dappled_action', metavar='command')
     # parser.add_argument("-v", ...)
 
-    init_parser = subparsers.add_parser("init")
+    init_parser = subparsers.add_parser("init", help="Initialize a new dappled directory")
     init_parser.add_argument('--language', type=str, default='python2')
-    edit_parser = subparsers.add_parser("edit")
+    edit_parser = subparsers.add_parser("edit", help="Edit the Jupyter Notebook specified by dappled.yml")
     edit_parser.add_argument('--no-docker', action="store_true")
     edit_parser.add_argument('--remote', action="store_true")
     edit_parser.add_argument('--local', action="store_true")
     edit_parser.add_argument('--port', type=int, default=8888)
-    run_parser = subparsers.add_parser("run")
+    run_parser = subparsers.add_parser("run", help="Run a dappled notebook")
     run_parser.add_argument("id", nargs='?')
     run_parser.add_argument('--no-docker', action="store_true")
     # run_parser.add_argument('--port', type=int, default=8008)
     # run_parser.add_argument('--server', action="store_true")
-    publish_parser = subparsers.add_parser("publish")
-    prepare_parser = subparsers.add_parser("prepare")
+    publish_parser = subparsers.add_parser("publish", help="Publish a notebook to dappled.io")
+    prepare_parser = subparsers.add_parser("prepare", help="Prepare an environment specified by dappled.yml")
     prepare_parser.add_argument("id", nargs='?')
     prepare_parser.add_argument('--no-docker', action="store_true")
-    clone_parser = subparsers.add_parser("clone")
+    clone_parser = subparsers.add_parser("clone", help="Clone a published notebook into the current directory")
     clone_parser.add_argument("id")
     clone_parser.add_argument('--include-env', action="store_true")
-    clean_parser = subparsers.add_parser("clean")
+    clean_parser = subparsers.add_parser("clean", help="Clean current software environment")
 
-    install_parser = subparsers.add_parser("install")
+    install_parser = subparsers.add_parser("install", help="Install a conda package and record it at dappled.yml")
     install_parser.add_argument("packages", nargs="+")
     install_parser.add_argument('--channel', '-c', action='append')
 
     # a_parser.add_argument("something", choices=['a1', 'a2'])
+
+    if len(sys.argv) == 1:
+        sys.argv.append('-h')
 
     args, unknown_args = parser.parse_known_args()
     if args.dappled_action != 'run':
