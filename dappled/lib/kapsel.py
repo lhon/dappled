@@ -3,9 +3,7 @@ import os
 import subprocess
 import sys
 from dappled.lib.utils import unbuffered, watch_conda_install, which
-
-class DappledError(Exception):
-    pass
+from dappled.lib import DappledError
 
 def patch():
     # use dappled.yml instead of kapsel.yml

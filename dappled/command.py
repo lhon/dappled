@@ -4,8 +4,9 @@ from __future__ import absolute_import, print_function, division, unicode_litera
 import argparse
 import json
 from getpass import getpass
-from glob import glob
 import os
+import re
+import string
 import subprocess
 import uuid
 
@@ -20,6 +21,8 @@ except:
     ruamel = imp.new_module('ruamel')
     ruamel.yaml = sys.modules['ruamel.yaml'] = ruamel_yaml
 
+from dappled.lib import DAPPLED_PATH
+from dappled.lib.idmap import save_id_mapping, get_id_path
 from dappled.lib.kapsel import run_kapsel_command, KapselEnv, DappledError
 import dappled.lib.kapsel
 dappled.lib.kapsel.patch()
@@ -32,11 +35,6 @@ if 'DAPPLED_HOST' in os.environ:
     requests.verify = False
 else:
     HOST = 'https://dappled.io'
-
-if os.name == 'nt':
-    DAPPLED_PATH = appdirs.user_data_dir('dappled')
-else:
-    DAPPLED_PATH = os.path.expanduser('~/.dappled')
 
 def call_conda_env_export():
     env = os.environ.copy()
@@ -213,14 +211,14 @@ def handle_edit_action(args):
 def handle_run_action(args, unknown_args):
 
     if args.id is not None:
-        if '/' in args.id:
-            id = args.id.split('/', 1)[1]
-        else:
-            id = args.id
-        paths = glob(os.path.join(DAPPLED_PATH, 'nb', id+'*'))
-        paths.sort(key=lambda x: x.split('.v')[1], reverse=True)
-        path = paths[0]
-        print(path)
+        path = get_id_path(args.id)
+
+        if path is None:
+            handle_prepare_action(args, show_run=False)
+            path = get_id_path(args.id)
+            if path is None:
+                raise DappledError('%s is not a valid ID' % args.id)
+
         os.chdir(path)
 
     if handle_if_docker_request(args):
@@ -233,12 +231,9 @@ def handle_run_action(args, unknown_args):
 
 def handle_publish_action(args):
 
-    username = raw_input('Username: ')
-    password = getpass()
-
     options = dict(
-        username=username,
-        password=password,
+        username=raw_input('Username: '),
+        password=getpass(),
         )
 
     yml = ruamel.yaml.load(open('dappled.yml').read(), ruamel.yaml.RoundTripLoader) 
@@ -275,6 +270,8 @@ def download_notebook_data(id, include_env=False):
 
     r = requests.get(HOST+'/api/clone', params=params)
     data = r.json()
+    if not data['success']:
+        raise DappledError(data['message'])
 
     return data
 
@@ -302,8 +299,10 @@ def setup_published(id):
 
     data = download_notebook_data(id, include_env=True)
 
-    id = '.'.join([data['publish_id'], data['version']])
-    path = os.path.join(DAPPLED_PATH, 'nb', id)
+    pvid = '.'.join([data['publish_id'], data['version']])
+    path = os.path.join(DAPPLED_PATH, 'nb', pvid)
+
+    save_id_mapping(id, data['publish_id'])
 
     try: os.makedirs(path)
     except: pass
@@ -312,10 +311,9 @@ def setup_published(id):
 
     os.chdir(path)
     print(path)
-    return id
+    return pvid
 
-
-def handle_prepare_action(args):
+def handle_prepare_action(args, show_run=True):
 
     if args.id is not None:
         id = setup_published(args.id)
@@ -333,7 +331,7 @@ def handle_prepare_action(args):
 
     kapsel_env = KapselEnv()
 
-    if args.id is not None:
+    if args.id is not None and show_run:
         print(args.id, 'is ready. To run this notebook use this command:')
         print()
         print('   dappled run', args.id)
@@ -463,6 +461,28 @@ def handle_install_action(args):
     cmd_list.extend(args.packages)
     run_kapsel_command(*cmd_list)
 
+def handle_name_action(args):
+    allowed_name = r'[a-z][a-z0-9-]+$'
+
+    if args.shortname[0] not in string.ascii_lowercase:
+        print('"{}" does not start with an undercase letter'.format(args.shortname))
+        sys.exit()
+
+    if not re.match(allowed_name, args.shortname):
+        print('"{}" must consist only of undercase letters, numbers, and dashes'.format(args.shortname))
+        sys.exit()
+
+    options = dict(
+        username=raw_input('Username: '),
+        password=getpass(),
+        id=args.id,
+        shortname=args.shortname,
+        )
+
+    r = requests.post(HOST+'/api/name', data=options)
+    rj = r.json()
+    print(rj['message'])
+
 class ArgumentParser(argparse.ArgumentParser):
     def print_help(self):
         super(ArgumentParser, self).print_help()
@@ -498,28 +518,38 @@ def main():
 
     init_parser = subparsers.add_parser("init", help="Initialize a new dappled directory")
     init_parser.add_argument('--language', type=str, default='python2')
+
     edit_parser = subparsers.add_parser("edit", help="Edit the Jupyter Notebook specified by dappled.yml")
     edit_parser.add_argument('--no-docker', action="store_true")
     edit_parser.add_argument('--remote', action="store_true")
     edit_parser.add_argument('--local', action="store_true")
     edit_parser.add_argument('--port', type=int, default=8888)
+
     run_parser = subparsers.add_parser("run", help="Run a dappled notebook")
     run_parser.add_argument("id", nargs='?')
     run_parser.add_argument('--no-docker', action="store_true")
     # run_parser.add_argument('--port', type=int, default=8008)
     # run_parser.add_argument('--server', action="store_true")
+
     publish_parser = subparsers.add_parser("publish", help="Publish a notebook to dappled.io")
+
     prepare_parser = subparsers.add_parser("prepare", help="Prepare an environment specified by dappled.yml")
     prepare_parser.add_argument("id", nargs='?')
     prepare_parser.add_argument('--no-docker', action="store_true")
+
     clone_parser = subparsers.add_parser("clone", help="Clone a published notebook into the current directory")
     clone_parser.add_argument("id")
     clone_parser.add_argument('--include-env', action="store_true")
+
     clean_parser = subparsers.add_parser("clean", help="Clean current software environment")
 
     install_parser = subparsers.add_parser("install", help="Install a conda package and record it at dappled.yml")
     install_parser.add_argument("packages", nargs="+")
     install_parser.add_argument('--channel', '-c', action='append')
+
+    name_parser = subparsers.add_parser("name", help="Assign a published notebook a short id")
+    name_parser.add_argument("id")
+    name_parser.add_argument("shortname")
 
     # a_parser.add_argument("something", choices=['a1', 'a2'])
 
@@ -547,6 +577,8 @@ def main():
             handle_clean_action(args)
         elif args.dappled_action == 'install':
             handle_install_action(args)
+        elif args.dappled_action == 'name':
+            handle_name_action(args)
     except DappledError as e:
         print(e)
 
