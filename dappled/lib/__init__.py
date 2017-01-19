@@ -5,6 +5,10 @@ if os.name == 'nt':
 else:
     DAPPLED_PATH = os.path.expanduser('~/.dappled')
 
+try:
+    os.makedirs(DAPPLED_PATH)
+except:
+    pass
 
 class DappledError(Exception):
     pass
