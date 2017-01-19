@@ -342,7 +342,7 @@ def handle_clone_action(args):
         print('dappled.yml already found in current directory... aborting')
         sys.exit()
 
-    data = download_notebook_data(args.id)
+    data = download_notebook_data(args.id, include_env=args.include_env)
 
     if not args.include_env:
         write_notebook_data(data)
