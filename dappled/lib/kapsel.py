@@ -2,7 +2,7 @@ from __future__ import absolute_import, print_function
 import os
 import subprocess
 import sys
-from dappled.lib.utils import unbuffered, watch_conda_install, which
+from dappled.lib.utils import unbuffered, watch_conda_install, which, clean_env
 from dappled.lib import DappledError
 
 def patch():
@@ -169,6 +169,8 @@ def patch():
     conda_kapsel.internal.conda_api._call_conda = _call_conda
 
 def run_kapsel_command(*args):
+    clean_env()
+
     from conda_kapsel.commands.main import _parse_args_and_run_subcommand
     argv = [''] + list(args)
     _parse_args_and_run_subcommand(argv)
@@ -191,6 +193,7 @@ class KapselEnv:
         # windows only allows strings for env
         self.env = dict([str(k), str(v)] for k,v in result.environ.items())
         self.env['PYTHONUNBUFFERED'] = '1'
+        clean_env(self.env)
 
         self.dirname = dirname
 

@@ -139,3 +139,13 @@ def which(program, pathstr=None):
 
     return None
 
+UNNEEDED_ENV_VARS = [
+    'JAVA_HOME',
+]
+
+def clean_env(env=None):
+    if env is None:
+        env = os.environ
+    for var in UNNEEDED_ENV_VARS:
+        if var in env:
+            del env[var]
