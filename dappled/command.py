@@ -130,6 +130,13 @@ def handle_init_action(args):
                 language="R",
                 name="ir",
                 )
+        elif args.language == 'bash':
+            notebook_template['metadata']['kernelspec'] = dict(
+                display_name="Bash",
+                language="bash",
+                name="bash",
+                )
+            yml['packages'].insert(0, 'bash_kernel')
         else:
             assert False
 
