@@ -116,10 +116,28 @@ def watch_conda_install(p):
                 print()
             print(line)
 
+    print()
+
     return out
 
-# http://stackoverflow.com/questions/377017/test-if-executable-exists-in-python/377028#377028
 def which(program, pathstr=None):
+    # if windows, check for .exe and .bat
+    if os.name == 'nt':
+        for suffix in ('.exe', '.bat'):
+            exe = program + suffix
+            exe_path = which1(exe, pathstr=pathstr)
+            if exe_path is not None:
+                return exe_path
+    else:
+        exe_path = which1(program, pathstr=pathstr)
+
+    if exe_path is None:
+        raise Exception("Couldn't find %s in path" % cmd_list[0])
+
+    return exe_path
+
+# http://stackoverflow.com/questions/377017/test-if-executable-exists-in-python/377028#377028
+def which1(program, pathstr=None):
     if pathstr is None:
         pathstr = os.environ["PATH"]
 

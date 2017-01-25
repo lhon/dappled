@@ -26,7 +26,8 @@ def patch():
             self._yaml['commands'] = {}
         self._yaml['commands']['dappled-run'] = dict(
             env_spec='default',
-            unix='dappled-run'
+            unix='dappled-run',
+            win='dappled-run',
             )
     ProjectFile.orig_load = ProjectFile.load
     ProjectFile.load = ProjectFile_load
@@ -210,8 +211,22 @@ class KapselEnv:
 
     def run(self, *cmd_list, **kwargs):
 
+        # if os.name == 'nt':
+        #     for suffix in ('.exe', '.bat'):
+        #         exe = cmd_list[0] + suffix
+        #         exe_path = which(exe, pathstr=self.env['PATH'])
+        #         if exe_path is not None: break
+        #     if exe_path is None:
+        #         raise Exception("Couldn't find %s in path" % cmd_list[0])
+        # else:
+        #     exe = cmd_list[0]
+        #     exe_path = which(exe, pathstr=self.env['PATH'])
+
+        # exe = cmd_list[0] if os.name != 'nt' else cmd_list[0] + '.exe'
+        # exe_path = which(exe, pathstr=self.env['PATH'])
+        
         # get full path of exe for windows
-        exe = cmd_list[0] if os.name != 'nt' else cmd_list[0] + '.exe'
+        exe = cmd_list[0]
         exe_path = which(exe, pathstr=self.env['PATH'])
         cmd_list = list(cmd_list)
         cmd_list[0] = exe_path
