@@ -1,6 +1,7 @@
 import os
 
 if os.name == 'nt':
+    import appdirs
     DAPPLED_PATH = appdirs.user_data_dir('dappled')
 else:
     DAPPLED_PATH = os.path.expanduser('~/.dappled')
