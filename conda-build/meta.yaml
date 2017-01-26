@@ -9,9 +9,11 @@ source:
    # - fix.patch
 
 build:
+  # noarch: python
   # noarch_python: True
   # preserve_egg_dir: True
   entry_points:
+    - dappled = dappled.__main__:main
     # Put any entry points (scripts to be generated automatically) here. The
     # syntax is module:function.  For example
     #
