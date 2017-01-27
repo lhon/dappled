@@ -131,8 +131,9 @@ def patch():
     def _get_conda_command(extra_args):
         # just use whatever conda is on the path
         # cmd_list = ['conda']
+        
         # unbuffered python output
-        cmd_list = ['python', '-u', '-m', 'conda']
+        cmd_list = [sys.executable, '-u', '-m', 'conda']
 
         cmd_list.extend(extra_args)
         # print(cmd_list)
