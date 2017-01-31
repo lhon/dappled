@@ -494,7 +494,7 @@ class ArgumentParser(argparse.ArgumentParser):
     def print_help(self):
         super(ArgumentParser, self).print_help()
 
-        if self.prog == 'dappled' and sys.argv[1:] in ([], ['help'], ['-h'], ['--help']):
+        if sys.argv[1:] in ([], ['help'], ['-h'], ['--help']):
             print("""
 Example Commands
 ----------------
@@ -502,7 +502,7 @@ Example Commands
 # Installing and running a published notebook
 dappled run dappled/hello
 
-# Cloning, editing, and running a published notebook
+# Cloning a published notebook and editing/running local version
 mkdir hello && cd hello
 dappled clone dappled/hello
 dappled edit
