@@ -1,5 +1,4 @@
 # dappled
------
 
 Dappled is an open source project for building and running deployable Jupyter notebooks.
 
@@ -14,7 +13,6 @@ Dappled can be used for:
 - scaling up data analyses onto larger machines and the cloud
 
 ## Getting Started
-
 
 ### Mac and Linux
 
