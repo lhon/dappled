@@ -2,9 +2,9 @@
 
 Dappled is an open source project for building and running deployable Jupyter notebooks.
 
-It allows data scientists to take a custom data analysis and with minimum fuss make it user-friendly, reproducible, and shareable.
+It allows data scientists to easily deploy and share custom data analyses, and collaborators to reuse, reproduce, and customize these analyses in a user friendly manner.
 
-A Dappled notebook specifies software dependencies and customizable parameters together with analysis, which can then be deployed to a user's choice of hardware, whether it be a laptop, server, or the cloud.
+A Dappled notebook bundles software dependencies and customizable parameters together with analysis, which can then be deployed anywhere, whether it be a laptop, server, or the cloud.
 
 Dappled can be used for:
 
