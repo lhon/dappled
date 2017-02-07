@@ -10,15 +10,8 @@ import string
 import subprocess
 import uuid
 
+
 import appdirs
-from requests import Session
-try:
-    import ruamel.yaml
-except:
-    # handle the conda version of ruamel_yaml that has an underscore
-    import imp, sys
-    import ruamel_yaml
-    ruamel = imp.new_module('ruamel')
     ruamel.yaml = sys.modules['ruamel.yaml'] = ruamel_yaml
 
 from dappled.lib import DAPPLED_PATH
@@ -29,8 +22,6 @@ dappled.lib.kapsel.patch()
 
 from dappled.lib.utils import get_free_port, get_ip_addresses, watch_conda_install
 
-requests = Session()
-if 'DAPPLED_HOST' in os.environ:
     HOST = os.environ['DAPPLED_HOST']
     requests.verify = False
 else:
@@ -264,58 +255,6 @@ def handle_publish_action(args):
     else:
         print(rj['message'])
 
-def download_notebook_data(id, include_env=False):
-    params=dict(id=id)
-
-    if include_env:
-        from conda.base.context import Context
-        context = Context()
-        params.update(dict(
-            platform = context.platform,
-            bits = context.bits,
-            ))
-
-    r = requests.get(HOST+'/api/clone', params=params)
-    data = r.json()
-    if not data['success']:
-        raise DappledError(data['message'])
-
-    return data
-
-def write_notebook_data(data, path='', write_environment_yml=False):
-    with open(os.path.join(path, 'dappled.yml'), 'w') as f:
-        f.write(data['dappled_yml'].encode('utf8'))
-
-    yml = ruamel.yaml.load(data['dappled_yml'], ruamel.yaml.RoundTripLoader) 
-    filename = os.path.basename(yml['filename'])
-    with open(os.path.join(path, filename), 'w') as f:
-        f.write(data['notebook'].encode('utf8'))
-
-    if write_environment_yml:
-        with open(os.path.join(path, 'environment.yml'), 'w') as f:
-            f.write(data['env'].encode('utf8'))
-
-def setup_published(id):
-    if '.' in id:
-        path = os.path.join(DAPPLED_PATH, 'nb', id)
-
-        if os.path.exists(path):
-            # print(path)
-            os.chdir(path)
-            return id
-
-    data = download_notebook_data(id, include_env=True)
-
-    pvid = '.'.join([data['publish_id'], data['version']])
-    path = os.path.join(DAPPLED_PATH, 'nb', pvid)
-
-    save_id_mapping(id, data['publish_id'])
-
-    try: os.makedirs(path)
-    except: pass
-
-    write_notebook_data(data, path, write_environment_yml=True)
-
     os.chdir(path)
     print(path)
     return pvid
@@ -325,6 +264,7 @@ def handle_prepare_action(args, show_run=True):
     if args.id is not None:
         id = setup_published(args.id)
         sys.argv = [id if x==args.id else x for x in sys.argv] # replace with updated id, in case docker is requested
+    elif args.use_env:
 
         cmd_list = ['python', '-u', '-m', 'conda', 'env', 'create', '-f', 'environment.yml', '-p', 'envs/default']
         try:
