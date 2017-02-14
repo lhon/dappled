@@ -2,7 +2,7 @@ import os
 import urllib
 import zipfile
 
-from dappled.lib import DAPPLED_PATH
+from dappled.lib import DAPPLED_PATH, ruamel
 from dappled.lib.idmap import save_id_mapping
 from dappled.lib.notebook import download_notebook_data, write_notebook_data
 

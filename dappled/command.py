@@ -8,24 +8,23 @@ import os
 import re
 import string
 import subprocess
+import sys
 import uuid
 
 
 import appdirs
-    ruamel.yaml = sys.modules['ruamel.yaml'] = ruamel_yaml
 
-from dappled.lib import DAPPLED_PATH
-from dappled.lib.idmap import save_id_mapping, get_id_path
+from dappled.lib import DAPPLED_PATH, ruamel
+from dappled.lib.idmap import get_id_path
 from dappled.lib.kapsel import run_kapsel_command, KapselEnv, DappledError
 import dappled.lib.kapsel
 dappled.lib.kapsel.patch()
 
 from dappled.lib.utils import get_free_port, get_ip_addresses, watch_conda_install
 
-    HOST = os.environ['DAPPLED_HOST']
-    requests.verify = False
-else:
-    HOST = 'https://dappled.io'
+from dappled.lib import requests, HOST
+from dappled.lib.notebook import download_notebook_data, write_notebook_data
+from dappled.lib.prepare import setup_published, download_from_github
 
 def call_conda_env_export():
     env = os.environ.copy()
@@ -255,17 +254,17 @@ def handle_publish_action(args):
     else:
         print(rj['message'])
 
-    os.chdir(path)
-    print(path)
-    return pvid
-
 def handle_prepare_action(args, show_run=True):
 
+    create_env = False
     if args.id is not None:
-        id = setup_published(args.id)
+        id, create_env = setup_published(args.id)
         sys.argv = [id if x==args.id else x for x in sys.argv] # replace with updated id, in case docker is requested
     elif args.use_env:
+        run_kapsel_command('clean')
+        create_env = True
 
+    if create_env:
         cmd_list = ['python', '-u', '-m', 'conda', 'env', 'create', '-f', 'environment.yml', '-p', 'envs/default']
         try:
             p = subprocess.Popen(cmd_list, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
@@ -274,9 +273,14 @@ def handle_prepare_action(args, show_run=True):
 
         out = watch_conda_install(p)
 
+        download_from_github(args)
+
     if handle_if_docker_request(args): return
 
     kapsel_env = KapselEnv()
+
+    with open('environment.yml', 'w') as f:
+        f.write(call_conda_env_export())
 
     if args.id is not None and show_run:
         print(args.id, 'is ready. To run this notebook use this command:')
@@ -482,6 +486,7 @@ def main():
 
     prepare_parser = subparsers.add_parser("prepare", help="Prepare an environment specified by dappled.yml")
     prepare_parser.add_argument("id", nargs='?')
+    prepare_parser.add_argument('--use-env', action="store_true")
     prepare_parser.add_argument('--no-docker', action="store_true")
 
     clone_parser = subparsers.add_parser("clone", help="Clone a published notebook into the current directory")
