@@ -26,6 +26,14 @@ curl https://raw.githubusercontent.com/lhon/dappled/master/install.sh | bash
 
 To install the `dappled` tool, download [this archive](https://raw.githubusercontent.com/lhon/dappled/master/install-win.zip) and run the batch script inside.
 
+### Conda
+
+If you already have [conda](https://github.com/conda/conda) installed, run this:
+
+```
+conda install dappled -c http://conda.dappled.io
+```
+
 ## Example Usage
 
 To run the notebook published at [https://dappled.io/dappled/hello](https://dappled.io/dappled/hello):
