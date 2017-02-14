@@ -132,7 +132,7 @@ def which(program, pathstr=None):
         exe_path = which1(program, pathstr=pathstr)
 
     if exe_path is None:
-        raise Exception("Couldn't find %s in path" % cmd_list[0])
+        raise Exception("Couldn't find %s in path" % program)
 
     return exe_path
 
