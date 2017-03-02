@@ -211,7 +211,7 @@ def handle_run_action(args, unknown_args):
         path = get_id_path(args.id)
 
         if path is None:
-            handle_prepare_action(args, show_run=False)
+            handle_prepare_action(args)
             path = get_id_path(args.id)
             if path is None:
                 raise DappledError('%s is not a valid ID' % args.id)
@@ -254,7 +254,7 @@ def handle_publish_action(args):
     else:
         print(rj['message'])
 
-def handle_prepare_action(args, show_run=True):
+def handle_prepare_action(args):
 
     create_env = False
     if args.id is not None:
@@ -281,12 +281,6 @@ def handle_prepare_action(args, show_run=True):
 
     with open('environment.yml', 'w') as f:
         f.write(call_conda_env_export())
-
-    if args.id is not None and show_run:
-        print(args.id, 'is ready. To run this notebook use this command:')
-        print()
-        print('   dappled run', args.id)
-        print()
 
 def handle_clone_action(args):
     if os.path.exists('dappled.yml'):
