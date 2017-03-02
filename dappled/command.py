@@ -24,32 +24,7 @@ from dappled.lib.utils import get_free_port, get_ip_addresses, watch_conda_insta
 
 from dappled.lib import requests, HOST
 from dappled.lib.notebook import download_notebook_data, write_notebook_data
-from dappled.lib.prepare import setup_published, download_from_github
-
-def call_conda_env_export():
-    env = os.environ.copy()
-    conda_prefix = os.path.join(os.getcwd(), 'envs')
-    env.update(dict(
-        CONDA_PREFIX = conda_prefix,
-        CONDA_DEFAULT_ENV = 'default'
-        ))
-
-
-    cmd_list = ['conda', 'env', 'export']
-
-    try:
-        p = subprocess.Popen(cmd_list, stdout=subprocess.PIPE, stderr=subprocess.PIPE, 
-            cwd=conda_prefix, env=env)
-    except OSError as e:
-        raise Exception("failed to run: %r: %r" % (" ".join(cmd_list), repr(e)))
-    (out, err) = p.communicate()
-    errstr = err.decode().strip()
-    if p.returncode != 0:
-        raise Exception('%s: %s' % (" ".join(cmd_list), errstr))
-    elif errstr != '':
-        for line in errstr.split("\n"):
-            print("%s %s: %s" % (cmd_list[0], cmd_list[1], line), file=sys.stderr)
-    return out
+from dappled.lib.prepare import setup_published, download_from_github, call_conda_env_export
 
 dappled_yml_template = '''
 name: Untitled
@@ -278,9 +253,6 @@ def handle_prepare_action(args):
     if handle_if_docker_request(args): return
 
     kapsel_env = KapselEnv()
-
-    with open('environment.yml', 'w') as f:
-        f.write(call_conda_env_export())
 
 def handle_clone_action(args):
     if os.path.exists('dappled.yml'):

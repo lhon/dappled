@@ -4,6 +4,7 @@ import subprocess
 import sys
 from dappled.lib.utils import unbuffered, watch_conda_install, which, clean_env
 from dappled.lib import DappledError
+from dappled.lib.prepare import call_conda_env_export
 
 def patch():
     # use dappled.yml instead of kapsel.yml
@@ -200,6 +201,10 @@ class KapselEnv:
         self.dirname = dirname
 
         self._prepare()
+
+        with open('environment.yml', 'w') as f:
+            f.write(call_conda_env_export())
+
 
     def _prepare(self):
         dappled_core_path = os.path.dirname(

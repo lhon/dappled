@@ -1,10 +1,39 @@
+from __future__ import absolute_import, print_function, division, unicode_literals
+
 import os
+import subprocess
+import sys
 import urllib
 import zipfile
 
 from dappled.lib import DAPPLED_PATH, ruamel
 from dappled.lib.idmap import save_id_mapping
 from dappled.lib.notebook import download_notebook_data, write_notebook_data
+
+def call_conda_env_export():
+    env = os.environ.copy()
+    conda_prefix = os.path.join(os.getcwd(), 'envs')
+    env.update(dict(
+        CONDA_PREFIX = conda_prefix,
+        CONDA_DEFAULT_ENV = 'default'
+        ))
+
+
+    cmd_list = ['conda', 'env', 'export']
+
+    try:
+        p = subprocess.Popen(cmd_list, stdout=subprocess.PIPE, stderr=subprocess.PIPE, 
+            cwd=conda_prefix, env=env)
+    except OSError as e:
+        raise Exception("failed to run: %r: %r" % (" ".join(cmd_list), repr(e)))
+    (out, err) = p.communicate()
+    errstr = err.decode().strip()
+    if p.returncode != 0:
+        raise Exception('%s: %s' % (" ".join(cmd_list), errstr))
+    elif errstr != '':
+        for line in errstr.split("\n"):
+            print("%s %s: %s" % (cmd_list[0], cmd_list[1], line), file=sys.stderr)
+    return out
 
 def setup_published(id):
     if '.' in id:
