@@ -4,7 +4,6 @@ from glob import glob
 import os
 import string
 
-from dappled.command import DAPPLED_PATH
 from dappled.lib import DAPPLED_PATH, DappledError
 map_path = os.path.join(DAPPLED_PATH, 'map.txt')
 
